@@ -285,13 +285,26 @@ table.grid tbody tr.priority-row { border-left: 3px solid var(--accent); }
 .urgency-later { background: var(--surface2); color: var(--text-2); }
 .urgency-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
 .badge-Will\ Apply { background: #EEE8F5; color: #4A2278; }
-.grid-badge.Will\ Apply { background: #EEE8F5; color: #4A2278; }
+.inline-select.stage-Phone\ Screen  { background-color: #E8F4FD; color: #1A5C8A; }
+.inline-select.stage-Interview      { background-color: var(--amber-light); color: var(--amber); }
+.inline-select.stage-Take-Home      { background-color: #EEE8F5; color: #4A2278; }
+.inline-select.stage-Final\ Round   { background-color: var(--danger-light); color: var(--danger); }
+.grid-badge.Phone\ Screen  { background: #E8F4FD; color: #1A5C8A; }
+.grid-badge.Interview      { background: var(--amber-light); color: var(--amber); }
+.grid-badge.Take-Home      { background: #EEE8F5; color: #4A2278; }
+.grid-badge.Final\ Round   { background: var(--danger-light); color: var(--danger); }
 
 /* Closing / posted date */
 .date-chip { font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 4px; margin-top: 3px; }
 .date-chip.closing-soon { color: var(--danger); font-weight: 500; }
 .date-chip.closing-very-soon { color: var(--danger); font-weight: 700; }
 .stale-chip { font-size: 10px; background: var(--amber-light); color: var(--amber); padding: 2px 6px; border-radius: 10px; font-weight: 500; }
+
+.kw-chip, .loc-chip { display:inline-flex;align-items:center;padding:4px 11px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-weight:500;color:var(--text-3);cursor:pointer;transition:all 0.12s;user-select:none; }
+.kw-chip:hover, .loc-chip:hover { border-color:var(--border-strong);color:var(--text); }
+.kw-chip.active { background:var(--accent);color:#fff;border-color:var(--accent); }
+.loc-chip.active { background:var(--accent-light);color:var(--accent-text);border-color:var(--accent); }
+.filter-row { display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px; }
 
 @media (max-width: 820px) {
   .sidebar { width: 60px; padding: 20px 10px; }
@@ -307,15 +320,11 @@ table.grid tbody tr.priority-row { border-left: 3px solid var(--accent); }
 
 <nav class="sidebar">
   <div class="sidebar-title">Applications<span>Grace · 2026</span></div>
-  <div class="sidebar-label">Stage</div>
-  <button class="stage-btn active" data-stage="All" onclick="setStage('All')"><span class="label-text">All</span><span class="pill" id="pill-All">0</span></button>
-  <button class="stage-btn" data-stage="Researching" onclick="setStage('Researching')"><span class="label-text">Researching</span><span class="pill" id="pill-Researching">0</span></button>
-  <button class="stage-btn" data-stage="Will Apply" onclick="setStage('Will Apply')"><span class="label-text">Will Apply</span><span class="pill" id="pill-Will Apply">0</span></button>
-  <button class="stage-btn" data-stage="Applied" onclick="setStage('Applied')"><span class="label-text">Applied</span><span class="pill" id="pill-Applied">0</span></button>
-  <button class="stage-btn" data-stage="Interviewing" onclick="setStage('Interviewing')"><span class="label-text">Interviewing</span><span class="pill" id="pill-Interviewing">0</span></button>
-  <button class="stage-btn" data-stage="Offer" onclick="setStage('Offer')"><span class="label-text">Offer</span><span class="pill" id="pill-Offer">0</span></button>
+  <div class="sidebar-label">View</div>
+  <button class="stage-btn active" data-stage="todo" onclick="setStage('todo')"><span class="label-text">To Do</span><span class="pill" id="pill-todo">0</span></button>
+  <button class="stage-btn" data-stage="all" onclick="setStage('all')"><span class="label-text">All</span><span class="pill" id="pill-all">0</span></button>
   <div class="sidebar-divider"></div>
-  <button class="stage-btn" data-stage="Rejected" onclick="setStage('Rejected')"><span class="label-text">Rejected</span><span class="pill" id="pill-Rejected">0</span></button>
+  <button class="stage-btn" data-stage="done" onclick="setStage('done')"><span class="label-text">Applied ✓</span><span class="pill" id="pill-done">0</span></button>
 </nav>
 
 <main class="main">
@@ -421,13 +430,28 @@ table.grid tbody tr.priority-row { border-left: 3px solid var(--accent); }
     </div>
   </div>
 
+  <div id="filter-bar" style="margin-bottom:4px;"></div>
   <div id="view-container"></div>
 </main>
 
 <div id="modal-root"></div>
 
 <script>
-const STAGES = ['Researching','Will Apply','Applied','Interviewing','Offer','Rejected'];
+const STAGES = ['Researching','Will Apply','Applied','Phone Screen','Interview','Take-Home','Final Round','Offer','Rejected'];
+const TODO_STAGES = ['Researching','Will Apply'];
+const DONE_STAGES = ['Applied','Phone Screen','Interview','Take-Home','Final Round','Offer','Rejected'];
+const RESPONSE_STAGES = ['Phone Screen','Interview','Take-Home','Final Round'];
+
+const KEYWORDS = {
+  WRITER:   /writ|editorial|content|copy|author|journalist|storytell/i,
+  TRAVEL:   /travel|hospitality|tourism|airline|hotel|resort|lonely planet/i,
+  BOOKS:    /book|publish|literary|fiction|nonfiction|fsg|novel|narrative/i,
+  STRATEGY: /strateg|consult|biz dev|business dev|ops\b|operations\b|analytics/i,
+  CREATOR:  /creator|substack|newsletter|podcast|platform|audience|influencer/i,
+};
+
+const LOC_FILTERS = ['All','Remote','Hybrid','NYC','SF','Boston','LA'];
+
 const KEY = 'grace_job_tracker_v2';
 
 const BG_WINS_DEFAULT = [
@@ -446,7 +470,9 @@ const SEED = [
   {id:3,company:'Substack',role:'Partner Program Lead',salary:'$130k–$160k',location:'San Francisco, CA',remote:'Remote',stage:'Researching',responsibilities:'Manage creator partner relationships; develop programs to grow Substack ecosystem.',wins:'Years of Graceful Substack; creator community knowledge from both sides of the platform.',notes:'Dream role — directly leverages platform experience.',sourceUrl:'',linkedin:'',appLink:'',resumeLink:'',coverLink:'',fitMBA:65,added:Date.now()-8e5,priority:true},
 ];
 
-let apps = [], nextId = 100, activeStage = 'All', currentView = 'cards';
+let apps = [], nextId = 100, activeStage = 'todo', currentView = 'cards';
+let activeKeywords = new Set();
+let activeLoc = 'All';
 
 function load() {
   try {
@@ -509,12 +535,38 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify({apps, nextId})
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function initials(n) { return n.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?'; }
-function parseSalary(s) { const n=(s||'').replace(/[^0-9]/g,' ').trim().split(/\s+/).map(Number).filter(Boolean); return n[0]||0; }
+function parseSalary(s) {
+  // Use midpoint of range for sorting, not just the first number
+  const n=(s||'').replace(/,/g,'').match(/\d+(\.\d+)?/g);
+  if(!n||!n.length) return 0;
+  const parsed=n.map(v=>parseFloat(v)<500?parseFloat(v)*1000:parseFloat(v));
+  if(parsed.length===1) return parsed[0];
+  // Average of all numbers found (handles ranges like $82k-$105k-$129k too)
+  return parsed.reduce((a,b)=>a+b,0)/parsed.length;
+}
 
 function setStage(s) {
   activeStage = s;
   document.querySelectorAll('.stage-btn').forEach(b=>b.classList.toggle('active', b.dataset.stage===s));
-  document.getElementById('page-title').textContent = s==='All'?'All Applications':s;
+  const titleMap = {todo:'To Do', all:'All Applications', done:'Applied & Beyond'};
+  document.getElementById('page-title').textContent = titleMap[s] || s;
+  render();
+}
+
+function toggleKeyword(kw) {
+  if (activeKeywords.has(kw)) activeKeywords.delete(kw);
+  else activeKeywords.add(kw);
+  document.querySelectorAll('.kw-chip').forEach(c => {
+    c.classList.toggle('active', activeKeywords.has(c.dataset.kw));
+  });
+  render();
+}
+
+function setLoc(loc) {
+  activeLoc = loc;
+  document.querySelectorAll('.loc-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.loc === loc);
+  });
   render();
 }
 
@@ -594,17 +646,46 @@ function getFiltered() {
   const q = (document.getElementById('search')?.value||'').toLowerCase();
   const sort = document.getElementById('sort')?.value||'recommended';
   const urgencyFilter = document.getElementById('urgency-filter')?.value||'all';
+
   let list = apps.filter(a => {
-    const sOk = activeStage==='All'||a.stage===activeStage;
-    const qOk = !q||a.company.toLowerCase().includes(q)||a.role.toLowerCase().includes(q)||(a.location||'').toLowerCase().includes(q);
-    const uOk = urgencyFilter==='all' || a.urgency===urgencyFilter;
-    return sOk && qOk && uOk;
+    // Stage filter
+    let stageOk;
+    if (activeStage === 'all') stageOk = true;
+    else if (activeStage === 'todo') stageOk = TODO_STAGES.includes(a.stage);
+    else if (activeStage === 'done') stageOk = DONE_STAGES.includes(a.stage);
+    else stageOk = a.stage === activeStage;
+
+    // Search
+    const text = [a.company, a.role, a.location, a.notes, a.responsibilities].join(' ').toLowerCase();
+    const qOk = !q || text.includes(q);
+
+    // Urgency
+    const uOk = urgencyFilter === 'all' || a.urgency === urgencyFilter;
+
+    // Location filter
+    let locOk = true;
+    if (activeLoc === 'Remote') locOk = a.remote === 'Remote';
+    else if (activeLoc === 'Hybrid') locOk = a.remote === 'Hybrid';
+    else if (activeLoc === 'NYC') locOk = /new york|nyc|\bny\b|manhattan/i.test(a.location||'');
+    else if (activeLoc === 'SF') locOk = /san francisco|\bsf\b|bay area/i.test(a.location||'');
+    else if (activeLoc === 'Boston') locOk = /boston|brighton/i.test(a.location||'');
+    else if (activeLoc === 'LA') locOk = /los angeles|\bla\b/i.test(a.location||'');
+
+    // Keyword filter
+    let kwOk = true;
+    if (activeKeywords.size > 0) {
+      const appText = [a.role, a.responsibilities, a.wins, a.notes, a.location, a.remote].join(' ');
+      kwOk = [...activeKeywords].every(kw => KEYWORDS[kw] && KEYWORDS[kw].test(appText));
+    }
+
+    return stageOk && qOk && uOk && locOk && kwOk;
   });
-  if (sort==='urgency')     list.sort((a,b)=>urgencyScore(b)-urgencyScore(a));
-  else if (sort==='salary')      list.sort((a,b)=>parseSalary(b.salary)-parseSalary(a.salary));
-  else if (sort==='company') list.sort((a,b)=>a.company.localeCompare(b.company));
-  else if (sort==='added')   list.sort((a,b)=>b.added-a.added);
-  else                       list.sort((a,b)=>scoreApp(b)-scoreApp(a));
+
+  if (sort === 'urgency')    list.sort((a,b)=>urgencyScore(b)-urgencyScore(a));
+  else if (sort === 'salary') list.sort((a,b)=>parseSalary(b.salary)-parseSalary(a.salary));
+  else if (sort === 'company') list.sort((a,b)=>a.company.localeCompare(b.company));
+  else if (sort === 'added')  list.sort((a,b)=>b.added-a.added);
+  else                        list.sort((a,b)=>scoreApp(b)-scoreApp(a));
   return list;
 }
 
@@ -672,9 +753,13 @@ function renderStats() {
 }
 
 function renderPills() {
-  const c = {All:apps.length};
-  STAGES.forEach(s=>c[s]=apps.filter(a=>a.stage===s).length);
-  Object.entries(c).forEach(([s,n])=>{ const el=document.getElementById('pill-'+s); if(el) el.textContent=n; });
+  const todoCount = apps.filter(a=>TODO_STAGES.includes(a.stage)).length;
+  const doneCount = apps.filter(a=>DONE_STAGES.includes(a.stage)).length;
+  const allCount = apps.length;
+  const el = id => document.getElementById(id);
+  if(el('pill-todo')) el('pill-todo').textContent = todoCount;
+  if(el('pill-all')) el('pill-all').textContent = allCount;
+  if(el('pill-done')) el('pill-done').textContent = doneCount;
 }
 
 const SVG_EXT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
@@ -956,8 +1041,92 @@ function saveGridLink(id, field, val) {
 
 function render() {
   renderStats(); renderPills();
-  if (currentView === 'grid') renderGrid();
+  renderFilterBar();
+  if (activeStage === 'done') renderDoneBucket();
+  else if (currentView === 'grid') renderGrid();
   else renderCards();
+}
+
+function renderFilterBar() {
+  const container = document.getElementById('filter-bar');
+  if (!container) return;
+  const kwHtml = Object.keys(KEYWORDS).map(kw =>
+    `<span class="kw-chip${activeKeywords.has(kw)?' active':''}" data-kw="${kw}" onclick="toggleKeyword('${kw}')">${kw}</span>`
+  ).join('');
+  const locHtml = LOC_FILTERS.map(loc =>
+    `<span class="loc-chip${activeLoc===loc?' active':''}" data-loc="${loc}" onclick="setLoc('${loc}')">${loc==='All'?'Any location':loc}</span>`
+  ).join('');
+  container.innerHTML = `
+    <div class="filter-row">${kwHtml}</div>
+    <div class="filter-row">${locHtml}</div>
+  `;
+}
+
+function renderDoneBucket() {
+  const container = document.getElementById('view-container');
+  const applied = apps.filter(a => DONE_STAGES.includes(a.stage));
+  const stages = {
+    'Applied': applied.filter(a=>a.stage==='Applied'),
+    'Phone Screen': applied.filter(a=>a.stage==='Phone Screen'),
+    'Interview': applied.filter(a=>a.stage==='Interview'),
+    'Take-Home': applied.filter(a=>a.stage==='Take-Home'),
+    'Final Round': applied.filter(a=>a.stage==='Final Round'),
+    'Offer': applied.filter(a=>a.stage==='Offer'),
+    'Rejected': applied.filter(a=>a.stage==='Rejected'),
+  };
+  const total = applied.length;
+  const inProgress = applied.filter(a=>['Phone Screen','Interview','Take-Home','Final Round'].includes(a.stage)).length;
+  const offers = applied.filter(a=>a.stage==='Offer').length;
+
+  if (!total) {
+    container.innerHTML = `<div style="text-align:center;padding:64px 16px;">
+      <div style="font-size:40px;margin-bottom:16px;">🌱</div>
+      <div style="font-family:'Playfair Display',serif;font-size:20px;margin-bottom:8px;">Nothing here yet</div>
+      <div style="color:var(--text-3);font-size:13px;">Move a role to Applied once you've sent it in — this is where the magic happens.</div>
+    </div>`;
+    return;
+  }
+
+  const emoji = offers > 0 ? '🎉' : inProgress > 0 ? '🔥' : total >= 5 ? '✨' : '🚀';
+  const headline = offers > 0 ? `You have an offer on the table!` : inProgress > 0 ? `${inProgress} active in the pipeline` : `${total} application${total!==1?'s':''} sent`;
+
+  const stageSection = (label, list, color, emoji) => {
+    if (!list.length) return '';
+    return `<div style="margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:${color};margin-bottom:8px;">${emoji} ${label} (${list.length})</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${list.map(a => `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px;display:flex;align-items:center;gap:12px;">
+            <div style="width:30px;height:30px;border-radius:8px;background:${color}22;color:${color};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;font-family:'Playfair Display',serif;">${initials(a.company)}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:500;">${esc(a.company)}</div>
+              <div style="font-size:11px;color:var(--text-3);">${esc(a.role)}</div>
+            </div>
+            ${a.salary?`<div style="font-size:11px;color:var(--text-2);white-space:nowrap;">${esc(a.salary)}</div>`:''}
+            <select class="response-sel" style="font-family:'DM Sans',sans-serif;font-size:11px;border:1px solid var(--border);border-radius:20px;padding:3px 22px 3px 9px;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%2210%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23999%22 stroke-width=%222.5%22%3E%3Cpolyline points=%226 9 12 15 18 9%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 5px center;background-color:var(--surface);color:var(--text-2);" onchange="inlineUpdate(${a.id},'stage',this.value)">
+              ${DONE_STAGES.map(s=>`<option${a.stage===s?' selected':''}>${s}</option>`).join('')}
+            </select>
+            <button onclick="openModal(${a.id},{})" style="background:transparent;border:1px solid var(--border);border-radius:7px;padding:4px 6px;cursor:pointer;color:var(--text-3);display:flex;align-items:center;">${SVG_EDIT}</button>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  };
+
+  container.innerHTML = `
+    <div style="text-align:center;padding:24px 0 20px;">
+      <div style="font-size:36px;margin-bottom:10px;animation:bounce 1s ease-in-out;">${emoji}</div>
+      <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:400;margin-bottom:4px;">${headline}</div>
+      <div style="color:var(--text-3);font-size:13px;">Keep the momentum going — pipeline wins compound.</div>
+    </div>
+    <style>@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}</style>
+    ${stageSection('Offer', stages['Offer'], '#1A5C2A', '🏆')}
+    ${stageSection('Final Round', stages['Final Round'], '#8B1F1F', '🔥')}
+    ${stageSection('Interview', stages['Interview'], '#7A4F0D', '💬')}
+    ${stageSection('Take-Home', stages['Take-Home'], '#4A2278', '📝')}
+    ${stageSection('Phone Screen', stages['Phone Screen'], '#1A5C8A', '📞')}
+    ${stageSection('Applied', stages['Applied'], '#1A3A5C', '✅')}
+    ${stageSection('Rejected', stages['Rejected'], '#9A9790', '👋')}
+  `;
 }
 function togglePriority(id) { const a=apps.find(x=>x.id===id); if(a){a.priority=!a.priority;save();render();} }
 function toggleCheck(id, field) {
