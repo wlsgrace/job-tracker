@@ -81,11 +81,12 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .spinner { width: 13px; height: 13px; border: 2px solid rgba(0,0,0,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
-.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; box-shadow: var(--shadow); }
-.stat-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
-.stat-val { font-size: 28px; font-weight: 300; font-family: 'Playfair Display', serif; line-height: 1; }
-.stat-sub { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+.stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 28px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--shadow); cursor: default; transition: border-color 0.15s; }
+.stat-card:hover { border-color: var(--border-strong); }
+.stat-label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+.stat-val { font-size: 26px; font-weight: 300; font-family: 'Playfair Display', serif; line-height: 1; }
+.stat-sub { font-size: 10px; color: var(--text-3); margin-top: 4px; }
 
 .controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
 .search-wrap { position: relative; flex: 1; min-width: 200px; }
@@ -342,30 +343,14 @@ table.grid tbody tr.priority-row { border-left: 3px solid var(--accent); }
   <div class="importer">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
       <div class="importer-tabs">
-        <button class="importer-tab active" id="tab-url" onclick="switchTab('url')">How to import</button>
-        <button class="importer-tab" id="tab-paste" onclick="switchTab('paste')">Paste listing</button>
+        <button class="importer-tab active" id="tab-paste" onclick="switchTab('paste')">Paste listing</button>
         <button class="importer-tab" id="tab-search" onclick="switchTab('search')">Find listing</button>
+        <button class="importer-tab" id="tab-export" onclick="switchTab('export')">Export data</button>
       </div>
       <span class="ai-badge">AI-powered</span>
     </div>
 
-    <div class="importer-panel active" id="panel-url">
-      <div style="padding:14px;background:var(--surface2);border-radius:var(--radius);font-size:13px;color:var(--text-2);line-height:1.6;">
-        <strong style="color:var(--text);display:block;margin-bottom:6px;">How to import a listing</strong>
-        The tracker can't fetch job pages directly from your browser — most career sites block it. The most reliable workflow is:
-        <ol style="margin:8px 0 0 16px;display:flex;flex-direction:column;gap:4px;">
-          <li>Paste the URL into chat with Claude and ask it to add the role to your tracker</li>
-          <li>Or switch to <strong>Paste listing</strong> — copy all the text from the job page and drop it there</li>
-          <li>Or use <strong>Find listing</strong> — type the role + company and Claude will search for a fetchable version</li>
-        </ol>
-        <div style="margin-top:10px;padding:8px 10px;background:var(--accent-light);border-radius:8px;font-size:12px;color:var(--accent-text);">
-          💡 For Ashby pages, the fetchable URL format is:<br>
-          <code style="font-size:11px;">jobs.ashbyhq.com/[Company]/[job-id]</code>
-        </div>
-      </div>
-    </div>
-
-    <div class="importer-panel" id="panel-paste">
+    <div class="importer-panel active" id="panel-paste">
       <div id="paste-fetch-hint" style="display:none;margin-bottom:10px;padding:8px 12px;background:var(--amber-light);border-radius:var(--radius);font-size:12px;color:var(--amber);">
         ⚠ That page couldn't be fetched automatically. Paste the job listing text below — the URL has been pre-filled.
       </div>
@@ -377,7 +362,7 @@ table.grid tbody tr.priority-row { border-left: 3px solid var(--accent); }
           Build card
         </button>
       </div>
-      <div class="importer-hint">Works for LinkedIn, any page behind a login, PDFs you've copied, or email job alerts. URL is optional but recommended.</div>
+      <div class="importer-hint">Works for LinkedIn, any page behind a login, PDFs you've copied, or email job alerts. Or just paste a URL into this Claude chat and I'll send you a one-click import link.</div>
     </div>
 
     <div class="importer-panel" id="panel-search">
@@ -391,6 +376,18 @@ table.grid tbody tr.priority-row { border-left: 3px solid var(--accent); }
         </button>
       </div>
       <div class="importer-hint" style="margin-top:8px;">Uses web search to find a public version of the listing (Greenhouse, Ashby, Lever, LinkedIn, etc.), then extracts the details.</div>
+    </div>
+
+    <div class="importer-panel" id="panel-export">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;line-height:1.6;">
+        Copy the JSON below and paste it into this Claude chat to let me read your current tracker — useful for updating task lists, getting a summary, or answering questions about your pipeline.
+      </div>
+      <textarea id="export-output" readonly style="width:100%;min-height:100px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);font-family:monospace;font-size:11px;color:var(--text-2);background:var(--surface2);outline:none;resize:vertical;line-height:1.5;" placeholder="Click 'Generate' to export your data…"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+        <button class="import-btn" onclick="generateExport()">Generate JSON</button>
+        <button class="import-btn" style="background:var(--surface2);color:var(--text-2);border:1px solid var(--border);" onclick="copyExport()">Copy to clipboard</button>
+        <span id="copy-confirm" style="font-size:11px;color:var(--success);display:none;">Copied ✓</span>
+      </div>
     </div>
 
     <div class="import-status" id="import-status">
@@ -740,16 +737,45 @@ function dateInfo(a) {
 
 function renderStats() {
   const total = apps.length;
-  const active = apps.filter(a=>a.stage!=='Rejected').length;
-  const interviews = apps.filter(a=>a.stage==='Interviewing').length;
-  const withNotes = apps.filter(a=>a.mbaNotes).length;
-  const fullyWorked = apps.filter(a=>appProgress(a)===100).length;
+  const todo = apps.filter(a=>TODO_STAGES.includes(a.stage)).length;
+  const priorityNow = apps.filter(a=>a.urgency==='now'&&TODO_STAGES.includes(a.stage)).length;
+  const inResponse = apps.filter(a=>['Phone Screen','Interview','Take-Home','Final Round'].includes(a.stage)).length;
+  const applied = apps.filter(a=>DONE_STAGES.includes(a.stage)).length;
+  const strongFit = apps.filter(a=>fitColor(a)==='green'&&TODO_STAGES.includes(a.stage)).length;
+  const unworked = apps.filter(a=>TODO_STAGES.includes(a.stage)&&appProgress(a)===0).length;
   const outreachDone = apps.filter(a=>a.outreach).length;
+
   document.getElementById('stats-grid').innerHTML = `
-    <div class="stat-card"><div class="stat-label">Total</div><div class="stat-val">${total}</div><div class="stat-sub">applications</div></div>
-    <div class="stat-card"><div class="stat-label">Active</div><div class="stat-val">${active}</div><div class="stat-sub">in pipeline</div></div>
-    <div class="stat-card"><div class="stat-label">Fully worked</div><div class="stat-val">${fullyWorked}</div><div class="stat-sub">app + resume + cover</div></div>
-    <div class="stat-card"><div class="stat-label">Outreach ★</div><div class="stat-val">${outreachDone}</div><div class="stat-sub">targeted outreach done</div></div>`;
+    <div class="stat-card" style="${priorityNow>0?'border-color:var(--danger);':''}" title="Roles flagged Apply Now that haven't been submitted yet">
+      <div class="stat-label">Apply Now</div>
+      <div class="stat-val" style="${priorityNow>0?'color:var(--danger);':''}">${priorityNow}</div>
+      <div class="stat-sub">urgent + unsubmitted</div>
+    </div>
+    <div class="stat-card" title="Total roles in your research / will-apply queue">
+      <div class="stat-label">To Do</div>
+      <div class="stat-val">${todo}</div>
+      <div class="stat-sub">in queue</div>
+    </div>
+    <div class="stat-card" title="Strong-fit roles (green) still in your to-do list">
+      <div class="stat-label">Strong fits left</div>
+      <div class="stat-val">${strongFit}</div>
+      <div class="stat-sub">not yet applied</div>
+    </div>
+    <div class="stat-card" title="Applications with no work started yet">
+      <div class="stat-label">Not started</div>
+      <div class="stat-val">${unworked}</div>
+      <div class="stat-sub">0% progress</div>
+    </div>
+    <div class="stat-card" title="Applications submitted">
+      <div class="stat-label">Applied</div>
+      <div class="stat-val">${applied}</div>
+      <div class="stat-sub">submitted</div>
+    </div>
+    <div class="stat-card" title="Active in interview or response stages">
+      <div class="stat-label">In pipeline</div>
+      <div class="stat-val">${inResponse}</div>
+      <div class="stat-sub">phone / interview / final</div>
+    </div>`;
 }
 
 function renderPills() {
@@ -792,24 +818,23 @@ const STRATEGY_QUANT = /strateg|quant|analyt|finance|consult|invest|biz dev|busi
 // Returns: 'green' | 'light-green' | 'yellow' | 'red' | null
 function fitColor(a) {
   const { lo, hi } = salaryRange(a.salary);
-  if (!lo && !hi) return null; // no salary data, no color
+  if (!lo && !hi) return 'yellow'; // no salary = uncertain, flag yellow
 
-  const isRemote = a.remote === 'Remote' || a.remote === 'Hybrid';
+  const isRemoteOrHybrid = a.remote === 'Remote' || a.remote === 'Hybrid';
   const hasWins = !!(a.wins && a.wins.trim());
-  const salaryOk = hi >= 80000 || lo >= 80000; // top of range hits $80k+
+  const salaryOk = hi >= 80000;
   const topBelowSeventy = hi > 0 && hi < 70000;
   const hasStrategyQuant = STRATEGY_QUANT.test(a.role) || STRATEGY_QUANT.test(a.responsibilities || '');
 
   // Red: top of range below $70k, unless strategy/quant role
   if (topBelowSeventy && !hasStrategyQuant) return 'red';
 
-  const score = [isRemote, salaryOk, hasWins].filter(Boolean).length;
+  // Score across three factors
+  const score = [isRemoteOrHybrid, salaryOk, hasWins].filter(Boolean).length;
 
   if (score === 3) return 'green';
   if (score === 2) return 'light-green';
-  if (salaryOk && score === 1) return 'yellow';
-  if (!salaryOk && score >= 1) return 'yellow';
-  return null;
+  return 'yellow'; // 1 or 0 factors met = yellow (something's missing)
 }
 
 const FIT_STYLES = {
@@ -1144,11 +1169,51 @@ function inlineUpdate(id, field, val) {
 }
 
 function switchTab(tab) {
-  ['url','paste','search'].forEach(t => {
-    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
-    document.getElementById('panel-'+t).classList.toggle('active', t===tab);
+  ['paste','search','export'].forEach(t => {
+    const tabEl = document.getElementById('tab-'+t);
+    const panelEl = document.getElementById('panel-'+t);
+    if(tabEl) tabEl.classList.toggle('active', t===tab);
+    if(panelEl) panelEl.classList.toggle('active', t===tab);
   });
   document.getElementById('import-status').className = 'import-status';
+}
+
+function generateExport() {
+  const summary = apps.map(a => ({
+    company: a.company,
+    role: a.role,
+    stage: a.stage,
+    salary: a.salary,
+    location: a.location,
+    remote: a.remote,
+    urgency: a.urgency,
+    priority: a.priority,
+    progress: appProgress(a) + '%',
+    doneApp: a.doneApp,
+    doneResume: a.doneResume,
+    doneCover: a.doneCover,
+    outreach: a.outreach,
+    fit: fitColor(a)||'unknown',
+    score: scoreApp(a),
+    sourceUrl: a.sourceUrl,
+    appLink: a.appLink,
+    wins: a.wins,
+    mbaNotes: a.mbaNotes,
+    notes: a.notes,
+  }));
+  const out = document.getElementById('export-output');
+  if(out) out.value = JSON.stringify(summary, null, 2);
+}
+
+function copyExport() {
+  const out = document.getElementById('export-output');
+  if(!out||!out.value) { generateExport(); }
+  if(out&&out.value) {
+    navigator.clipboard.writeText(out.value).then(()=>{
+      const confirm = document.getElementById('copy-confirm');
+      if(confirm){confirm.style.display='';setTimeout(()=>confirm.style.display='none',2000);}
+    });
+  }
 }
 
 async function importFromSearch() {
